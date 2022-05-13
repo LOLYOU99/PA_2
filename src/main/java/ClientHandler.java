@@ -1,14 +1,13 @@
 import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
+import javax.crypto.SecretKey;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
-import java.security.InvalidKeyException;
-import java.security.NoSuchAlgorithmException;
-import java.security.PrivateKey;
-import java.security.PublicKey;
+import java.security.*;
+import java.security.spec.InvalidKeySpecException;
 import java.util.ArrayList;
 
 public class ClientHandler implements Runnable {
@@ -91,8 +90,8 @@ public class ClientHandler implements Runnable {
     }
 
 
-    public byte[] encryptMessage(Client client, byte[] message) throws NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, IOException, InvalidKeyException {
-        byte[] message_encrypted= client.getProtocol().encrypt(message,client.getPrivateKey(),client.getPublicKey(),client.getKey());//Todo: para fazer falta acrescentar ciração de keys no cliente e verificar restantes algoritmos de encypt
+    public byte[] encryptMessage(Client client, byte[] message, SecretKey key) throws NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, IOException, InvalidKeyException {
+        byte[] message_encrypted= client.getProtocol().encrypt(message,getClient().getProtocol().getPublicKey(),getClient().getProtocol().getKey());//Todo: para fazer falta acrescentar ciração de keys no cliente e verificar restantes algoritmos de encypt
         return message_encrypted;
     }
 
@@ -100,9 +99,7 @@ public class ClientHandler implements Runnable {
         byte[] message = (byte[]) messageWithReceiver.get( 2 );
         for (ClientHandler clientHandler: clientHandlers) {
             if(messageWithReceiver.get(1)== clientHandler.getUserName()){
-                PrivateKey privateKey= null;// TODO: DUVIDA  como aceder as variaveis necessárias? getters? (apesar de serem privadas ou nao)
-                String key=null;
-                message =clientHandler.getClient().getProtocol().decrypt(message,key,privateKey,clientHandler.getClient().getPublicKey());//TODO : melhorar maneira de aceder aos  ecnrypt de cada protocolo
+                message =clientHandler.getClient().getProtocol().decrypt(message,clientHandler.getClient().getKey());//TODO : melhorar maneira de aceder aos  ecnrypt de cada protocolo
             }
         }
         return message;
@@ -141,12 +138,42 @@ public class ClientHandler implements Runnable {
     public void groupMessage(){ //TODO:Criar metodo que recebe so recebe mensagem e envia para o grupo de pessoas nela indicado
 
     }
-    public void handshakeConfirm(){
-            ClientHandler handler= new ClientHandler();
+    public void handshakeConfirm(ArrayList<Object> dados ) throws IOException, ClassNotFoundException {
+
+        ClientHandler handler= new ClientHandler(,server);
+        dados = new ArrayList<>( 3 );
     }
 
+    public void sendOneMessage( byte[] data, Client user) throws IOException {
+        if (server.isConnected()) {
+            try {
+                System.out.println("Client is connected");
+
+                byte[] messageEncrypted = protocol.encrypt(data, user.getPublicKey(), user.getKey());
+                ArrayList<Object> messageWithReceiver = new ArrayList<>(2);
+                messageWithReceiver.add(user.getUserName());
+                messageWithReceiver.add(messageEncrypted);
+                out.writeObject(messageWithReceiver);
+                //out.writeObject(protocol);
 
 
+            } catch (NoSuchPaddingException e) {
+                e.printStackTrace();
+            } catch (IllegalBlockSizeException e) {
+                e.printStackTrace();
+            } catch (NoSuchAlgorithmException e) {
+                e.printStackTrace();
+            } catch (BadPaddingException e) {
+                e.printStackTrace();
+            } catch (InvalidKeyException e) {
+                e.printStackTrace();
+            }
+
+        }
+        else {
+            System.out.println("Client is not connected");
+        }
+    }
 
     public String getUserName () {
         return userName;

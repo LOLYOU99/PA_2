@@ -1,15 +1,14 @@
 import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
+import javax.crypto.SecretKey;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
-import java.security.InvalidKeyException;
-import java.security.NoSuchAlgorithmException;
-import java.security.PrivateKey;
-import java.security.PublicKey;
+import java.security.*;
+import java.security.spec.InvalidKeySpecException;
 import java.util.ArrayList;
 import java.util.Scanner;
 
@@ -27,13 +26,30 @@ public class Client {
     private final String userName;
 
     private final Protocol protocol;
-    private String key;
+    private SecretKey secretkey;
+
+    public String getKey() {
+        return Key;
+    }
+
+    private String Key=null;
+
+    public void setSecretkey(SecretKey secretkey) {
+        this.secretkey = secretkey;
+    }
+
+    public SecretKey getSecretKey() {
+
+        return this.secretkey;
+    }
+
+    //private SecretKey key;
 
     public PrivateKey getPrivateKey() { return privateKey; }
     public PublicKey getPublicKey() {
         return publicKey;
     }
-    public String getKey() {return key;}
+
     public Protocol getProtocol() {
         return protocol;
     }
@@ -59,62 +75,42 @@ public class Client {
         ArrayList<Object> message = new ArrayList<>( 3 );
         message.add(0,"handshake");
         message.add( 1,userName );
-        message.add(2,setup_protocolos);
+        message.add(2,this);
         out.writeObject( message );
     }
 
-    public void sendMessages () throws IOException {
-        while ( client.isConnected( ) ) {
-            Scanner usrInput = new Scanner( System.in );
-            String message = usrInput.nextLine( );
-
-            try {
-                for ( int i = 0; i < userNames.size( ); i++ ) {
-                    if (  userName.equals( userNames.get( i ) ) ) {
-                        String key = null;
-                        byte[] messageEncrypted = protocol.encrypt( message.getBytes( StandardCharsets.UTF_8 ) ,privateKey, publicKey ,key );
-                        ArrayList<Object> messageWithReceiver = new ArrayList<>( 3 );
-                        messageWithReceiver.add(0,"message");
-                        messageWithReceiver.add( 1,userNames.get( i ) );
-                        messageWithReceiver.add(2, messageEncrypted );
-                        out.writeObject( messageWithReceiver );
-                        //out.writeObject(protocol);
-
-                }
-            }
-            }catch ( IOException e ) {
-                closeConnection( );
-                break;
-            } catch ( NoSuchPaddingException | IllegalBlockSizeException | BadPaddingException | NoSuchAlgorithmException | InvalidKeyException e ) {
-                e.printStackTrace( );
-            }
-        }
-    }
-
     public void sendOneMessage( byte[] data, Client user) throws IOException {
-        if ( client.isConnected( ) ) {
+        if (client.isConnected()) {
             try {
-                for ( int i = 0; i < publicKeys.size( ); i++ ) {
-                    if ( ! user.getUserName().equals( userNames.get( i ) ) ) {
-                        String key = null;
-                        byte[] messageEncrypted = protocol.encrypt( data ,privateKey, publicKeys.get( i ), key   );
-                        ArrayList<Object> messageWithReceiver = new ArrayList<>( 2 );
-                        messageWithReceiver.add( userNames.get( i ) );
-                        messageWithReceiver.add( messageEncrypted );
-                        out.writeObject( messageWithReceiver );
-                        //out.writeObject(protocol);
-                    }
-                }
-            } catch ( IOException e ) {
-                closeConnection( );
-            } catch ( NoSuchPaddingException | IllegalBlockSizeException | BadPaddingException | NoSuchAlgorithmException | InvalidKeyException e ) {
-                e.printStackTrace( );
+                System.out.println("Client is connected");
+
+                byte[] messageEncrypted = protocol.encrypt(data, user.getPublicKey(), user.getKey());
+                ArrayList<Object> messageWithReceiver = new ArrayList<>(2);
+                messageWithReceiver.add(user.getUserName());
+                messageWithReceiver.add(messageEncrypted);
+                out.writeObject(messageWithReceiver);
+                //out.writeObject(protocol);
+
+
+            } catch (NoSuchPaddingException e) {
+                e.printStackTrace();
+            } catch (IllegalBlockSizeException e) {
+                e.printStackTrace();
+            } catch (NoSuchAlgorithmException e) {
+                e.printStackTrace();
+            } catch (BadPaddingException e) {
+                e.printStackTrace();
+            } catch (InvalidKeyException e) {
+                e.printStackTrace();
             }
+
         }
-        else  {
+        else {
             System.out.println("Client is not connected");
         }
     }
+
+
 
 
   /*  public void readMessages () {
@@ -166,7 +162,7 @@ public class Client {
                         {
                             String key = null ;
                             String userName = getUserName();
-                            String messageDecrypted = new String( protocol.decrypt( message,key, privateKey,publicKey )   );
+                            String messageDecrypted = new String( protocol.decrypt( message,key, privateKey,publicKey,Secretkey )   );
                             //System.out.println( userName + ": " + messageDecrypted );
                             ArrayList <Client> destinatarios= MessageAnalizer(message);
                             if(!destinatarios.isEmpty()){
@@ -197,7 +193,9 @@ public class Client {
         ArrayList <Client> clientes = null;
         String messageS= new String(message);
             if( messageS.startsWith("@")){//Todo: Mario
-                // percorrer mensagem e ler os varios destinatarios para quem vai ser direcionada a mensagem 
+
+
+
             }
             return clientes;
         }
